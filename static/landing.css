@@ -378,3 +378,4 @@ body.night .mcard .mt b{font-size:24px}
 
 /* 업종별 첫 화면 배경 사진 */
 .mcard.s-toilet{background:linear-gradient(90deg,rgba(20,12,16,.78) 0%,rgba(20,12,16,.55) 55%,rgba(20,12,16,.15) 100%),url(/static/photos/bg_toilet.jpg) 30% 70%/auto 135% no-repeat}
+.mcard.s-sink{background:linear-gradient(90deg,rgba(20,12,16,.78) 0%,rgba(20,12,16,.55) 55%,rgba(20,12,16,.15) 100%),url(/static/photos/bg_sink.jpg) 20% 75%/auto 140% no-repeat}
