@@ -159,8 +159,8 @@
     S.req = CAT;
   }
   if (WCAT) {
-    if ($("hbCat")) $("hbCat").textContent = `${WCAT} 막힘,`;
-    if ($("riskT")) $("riskT").textContent = `${WCAT} 막힘, 그냥 두면 이렇게 돼요`;
+    if ($("hbCat")) $("hbCat").textContent = `${WCAT}막힘,`;
+    if ($("riskT")) $("riskT").textContent = `${WCAT}막힘, 그냥 두면 이렇게 돼요`;
   }
   // 구글 광고 전환 (라벨이 설정된 것만)
   function gconv(kind) {
