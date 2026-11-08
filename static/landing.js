@@ -6,10 +6,23 @@
   const THAW = !!PM.thaw;  // 해빙 페이지 (/{지역}/thaw/)
   const SVC = PM.svc || "";  // 서비스별 페이지 (변기·싱크대·하수구) — 업종 고정
   const SVCK = ["toilet", "sink", "drain"].find((k) => PM.slug.endsWith("/" + k)) || "";
-  const REQS = LEAK ? ["바닥·천장 누수", "벽·배관 누수", "변기·수전 주변", "기타 (직접 입력)"]
-             : THAW ? ["수도가 안 나와요", "배관·계량기 동파", "온수가 안 나와요", "기타 (직접 입력)"]
+  const WC = PM.svc === "화장실";  // 화장실 페이지: 검색어에 따라 변기·세면대·욕조로 바꿔 보여줌
+  const WCAT = (() => {
+    if (!WC) return null;
+    const u = new URLSearchParams(location.search);
+    const text = `${u.get("n_query") || ""} ${u.get("n_keyword") || u.get("utm_term") || u.get("keyword") || ""}`.replace(/\s+/g, "");
+    const RULES = [["세면대", /세면대|세면기|세숫대|새면대/], ["욕조", /욕조/], ["샤워실", /샤워/], ["변기", /변기|번기|변끼|벤기/]];
+    for (const [name, re] of RULES) if (re.test(text)) return name;
+    return null;
+  })();
+  // 문의 칩: 이 페이지 업종을 앞에, 다른 업종은 끝쪽에 (혹시 다른 문제로 들어온 경우)
+  const REQS = LEAK ? ["바닥·천장 누수", "벽·배관 누수", "변기·수전 주변", "배관 막힘", "기타 (직접 입력)"]
+             : THAW ? ["수도가 안 나와요", "배관·계량기 동파", "온수가 안 나와요", "누수", "배관 막힘", "기타 (직접 입력)"]
+             : WC ? ["변기", "세면대", "욕조", "샤워실", "싱크대", "하수구", "기타 (직접 입력)"]
+             : SVC === "싱크대" ? ["싱크대", "변기", "하수구", "세면대", "욕조", "기타 (직접 입력)"]
+             : SVC === "하수구" ? ["하수구", "욕실 배수구", "베란다", "세탁실", "변기", "싱크대", "기타 (직접 입력)"]
                     : ["변기", "싱크대", "하수구", "세면대", "욕조", "세탁실", "베란다", "기타 (직접 입력)"];
-  const S = { req: LEAK ? "바닥·천장 누수" : THAW ? "수도가 안 나와요" : (SVC || "변기"), addr: null, token: "", sending: false };
+  const S = { req: LEAK ? "바닥·천장 누수" : THAW ? "수도가 안 나와요" : (WC ? (WCAT || "변기") : (SVC || "변기")), addr: null, token: "", sending: false };
 
   function toast(m) { const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2600); }
   function err(m) { const e = $("formErr"); e.textContent = m; e.hidden = !m; }
@@ -48,7 +61,7 @@
     const t = 0;
     fetch("/static/rg.json").then((r) => r.json()).then((RG) => {
       // 업종·작업 단어는 지우고 남은 글자에서만 지역 이름을 찾음 (예: "하수구"의 "하"를 지역으로 착각하지 않게)
-      const clean = (t) => t.replace(/양변기|좌변기|변기|하수구|하수관|오수관|싱크대|씽크대|세면대|배수구|배관|화장실|욕실|욕조|주방|부엌|베란다|세탁실|막혔을때|막힘|뚫는곳|뚫는업체|뚫어주는곳|뚫음|업체|비용|역류|청소|고압세척|출장|근처|전문|24시|누수탐지|누수|탐지|수리/g, "|");
+      const clean = (t) => t.replace(/양변기|좌변기|변기|하수구|하수관|오수관|싱크대|씽크대|세면대|배수구|배관|화장실|욕실|욕조|주방|부엌|베란다|세탁실|막혔을때|막힘|뚫는곳|뚫는업체|뚫어주는곳|뚫음|업체|비용|역류|청소|고압세척|출장|근처|전문|24시|누수탐지|누수|탐지|수리|수도관|수도|동파|해빙|계량기|얼었을때|얼음|녹이기|온수/g, "|");
       const qr = clean(q);
       const gHits = (text) => {  // 글자 안의 구·시 이름 → 그 지역 경로들
         const gk = Object.keys(RG.g).filter((k) => k.length >= 2 && text.includes(k) && !(isSido && k === PM.sido)).sort((a, b) => b.length - a.length);
@@ -65,7 +78,7 @@
       const findDong = (text) => {
         const g = gHits(text);
         const keys = Object.keys(RG.d).filter((k) => k.length >= 2 && text.includes(k) && !RG.g[k]).sort((a, b) => b.length - a.length);  // 구·시 이름과 같은 글자(안양·성동 등)는 동으로 보지 않음
-        for (const k of ((LEAK || THAW) ? [] : keys)) {  // 누수 페이지는 구·시 단위만 (동·역 누수 페이지 없음)
+        for (const k of ((LEAK || THAW) && document.documentElement.dataset.lt !== "1" ? [] : keys)) {  // 누수·해빙: 동·역 페이지가 있는 사이트(pipe2)에서만 동·역으로
           let c = RG.d[k];
           if (g.length) c = c.filter(([p, par]) => g.includes(par) || g.includes(p));
           else { const h = inHere(c); c = h.length ? h : sameSido(c); }
@@ -144,6 +157,10 @@
     if ($("hbCat")) $("hbCat").textContent = `${CAT}막힘,`;
     if ($("riskT")) $("riskT").textContent = `${CAT}막힘, 그냥 두면 이렇게 돼요`;
     S.req = CAT;
+  }
+  if (WCAT) {
+    if ($("hbCat")) $("hbCat").textContent = `${WCAT} 막힘,`;
+    if ($("riskT")) $("riskT").textContent = `${WCAT} 막힘, 그냥 두면 이렇게 돼요`;
   }
   // 구글 광고 전환 (라벨이 설정된 것만)
   function gconv(kind) {
